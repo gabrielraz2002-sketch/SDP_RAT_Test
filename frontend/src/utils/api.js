@@ -41,3 +41,6 @@ export const removeMerge = (id, canonicalEmail, signal) =>
 
 export const getMetrics = (repoId, params, signal) =>
   api.get(`/metrics/${repoId}`, { params, signal }).then((r) => r.data);
+
+export const getTimeline = (repoId, params, signal) =>
+  api.get(`/metrics/${repoId}/timeline`, { params, signal }).then((r) => r.data);

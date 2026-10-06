@@ -605,3 +605,169 @@ function buildNestedTree(paths) {
   sortChildren(root);
   return root;
 }
+
+/* ------------------------------------------------------------------ */
+/* Timeline computation                                                */
+/* ------------------------------------------------------------------ */
+
+const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+function toBucketTimestamp(unixSec, gran) {
+  const d = new Date(unixSec * 1000);
+  if (gran === 'day')
+    return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 1000;
+  if (gran === 'week') {
+    const dow = d.getUTCDay(); // 0 = Sunday
+    const monday = new Date(d);
+    monday.setUTCDate(d.getUTCDate() - ((dow + 6) % 7));
+    return Date.UTC(monday.getUTCFullYear(), monday.getUTCMonth(), monday.getUTCDate()) / 1000;
+  }
+  // month
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1) / 1000;
+}
+
+function getISOWeek(ts) {
+  const d = new Date(ts * 1000);
+  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dayNum = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  return Math.ceil((((date - yearStart) / 86400000) + 1) / 7);
+}
+
+function toBucketLabel(ts, gran) {
+  const d = new Date(ts * 1000);
+  const m = MONTH_NAMES[d.getUTCMonth()];
+  const y = d.getUTCFullYear();
+  if (gran === 'day') return `${d.getUTCDate()} ${m} ${y}`;
+  if (gran === 'week') return `W${getISOWeek(ts)} ${m} ${y}`;
+  return `${m} ${y}`;
+}
+
+function nextBucketTimestamp(ts, gran) {
+  if (gran === 'day') return ts + 86400;
+  if (gran === 'week') return ts + 7 * 86400;
+  const d = new Date(ts * 1000);
+  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1) / 1000;
+}
+
+/**
+ * Compute churn-over-time timeline for a repo. Applies the same
+ * filters as queryMetrics and groups diff records into time buckets.
+ */
+export function computeTimeline(repoId, params = {}) {
+  const engine = engines.get(repoId);
+  if (!engine) {
+    const err = new Error('Repo is not ready');
+    err.statusCode = 409;
+    throw err;
+  }
+  const repo = getRepo(repoId);
+  const mergeMap = buildMergeMap(repo ? repo.authorMerges : []);
+
+  let qPath = String(params.path ?? '').trim();
+  qPath = qPath === '/' ? '' : qPath.replace(/^\/+/, '').replace(/\/+$/, '');
+
+  const since = Number.isFinite(params.since) ? params.since : null;
+  const until = Number.isFinite(params.until) ? params.until : null;
+  const commitHashes =
+    Array.isArray(params.commitHashes) && params.commitHashes.length ? params.commitHashes : null;
+  const authorFilter = params.author ? parseAuthorParam(params.author) : null;
+
+  const hashSet = commitHashes
+    ? new Set(commitHashes.map((h) => String(h).toLowerCase()))
+    : null;
+  const needHashCheck = Boolean(hashSet) || since != null || until != null;
+
+  let hSet = null;
+  if (needHashCheck) {
+    const hCommits = selectCommits(engine, { hashSet, since, until, authorFilter: null, mergeMap });
+    hSet = new Set(hCommits.map((c) => c.hash));
+  }
+  const inH = (r) => !needHashCheck || hSet.has(r.commitHash);
+
+  const pathPredicate = (p) =>
+    qPath === '' ? true : p === qPath || p.startsWith(qPath + '/');
+
+  // Base records for the path
+  const baseRecords =
+    qPath === ''
+      ? engine.diffs
+      : engine.fileIndex.has(qPath)
+      ? engine.fileIndex.get(qPath) || []
+      : engine.dirIndex.get(qPath) || [];
+
+  // Apply hash + author filters
+  let records;
+  if (!authorFilter) {
+    records = needHashCheck ? baseRecords.filter(inH) : baseRecords;
+  } else {
+    const candidateKeys = new Set();
+    for (const email of groupEmailsFor(authorFilter.email, mergeMap)) {
+      const keySet = engine.pairsByEmail.get(email);
+      if (keySet) for (const k of keySet) candidateKeys.add(k);
+    }
+    const out = [];
+    for (const key of candidateKeys) {
+      const arr = engine.recordsByPair.get(key);
+      if (!arr) continue;
+      for (const r of arr) {
+        if (!authorMatches(r.author.name, r.author.email, authorFilter, mergeMap)) continue;
+        if (!pathPredicate(r.path) || !inH(r)) continue;
+        out.push(r);
+      }
+    }
+    records = out;
+  }
+
+  // Determine granularity
+  let minDate = Infinity;
+  let maxDate = -Infinity;
+  for (const r of records) {
+    if (r.date < minDate) minDate = r.date;
+    if (r.date > maxDate) maxDate = r.date;
+  }
+  const spanDays = records.length ? (maxDate - minDate) / 86400 : 0;
+  const gran =
+    params.granularity && ['day', 'week', 'month'].includes(params.granularity)
+      ? params.granularity
+      : spanDays < 90
+      ? 'day'
+      : spanDays < 730
+      ? 'week'
+      : 'month';
+
+  if (records.length === 0) return { granularity: gran, buckets: [] };
+
+  // Group into buckets
+  const bucketMap = new Map();
+  for (const r of records) {
+    const ts = toBucketTimestamp(r.date, gran);
+    let b = bucketMap.get(ts);
+    if (!b) { b = { added: 0, removed: 0 }; bucketMap.set(ts, b); }
+    b.added += r.added;
+    b.removed += r.removed;
+  }
+
+  // Fill gaps and build output
+  const allTs = [...bucketMap.keys()].sort((a, bk) => a - bk);
+  const buckets = [];
+  let cur = allTs[0];
+  const last = allTs[allTs.length - 1];
+  while (cur <= last) {
+    const b = bucketMap.get(cur);
+    const added = b ? b.added : 0;
+    const removed = b ? b.removed : 0;
+    buckets.push({
+      timestamp: cur,
+      label: toBucketLabel(cur, gran),
+      added,
+      removed,
+      churn: added + removed,
+      growth: added - removed,
+    });
+    cur = nextBucketTimestamp(cur, gran);
+  }
+
+  return { granularity: gran, buckets };
+}

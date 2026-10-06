@@ -281,7 +281,14 @@ export default function RepoDashboard() {
                 onClearFilters={() => setFilters(DEFAULT_FILTERS)}
               />
             ) : (
-              <MetricsCharts data={metricsData} />
+              <MetricsCharts
+                data={metricsData}
+                repoId={id}
+                filters={filters}
+                onBucketClick={(since, until) =>
+                  setFilters((f) => ({ ...f, since, until }))
+                }
+              />
             )}
           </div>
         </div>
