@@ -10,7 +10,7 @@ A web-app dashboard that ingests Git repositories and computes detailed metrics 
 - **Four views** — Repository root, Directory, File, Author rollup
 - **Filtering** — time range (from/to), manual commit selection, author, and path
 - **Author merging** — automatic via `.mailmap`, or manual via the Author Management panel
-- **Interactive dashboard** — sortable/paginated metrics table, stacked bar chart (top 10 by churn), author ownership pie chart
+- **Interactive dashboard** — sortable/paginated metrics table, stacked bar chart (top 10 by churn), author ownership pie chart, churn-over-time area chart with drill-down
 - **Export CSV** — download the full breakdown as a CSV file
 - **Keyboard shortcut** — press `/` anywhere to focus the path filter
 
@@ -60,7 +60,7 @@ With the backend running and a repo loaded at its reference SHA:
 cd backend
 node src/utils/validate.js cJSON   # ✓ 983 rows matched  — PASSED
 node src/utils/validate.js redis   # ✓ 18301 rows matched — PASSED
-node src/utils/validate.js git     # ✓ 62601 rows matched — PASSED
+node src/utils/validate.js git     # run after loading the git repo at its reference SHA
 ```
 
 ## Metric definitions
