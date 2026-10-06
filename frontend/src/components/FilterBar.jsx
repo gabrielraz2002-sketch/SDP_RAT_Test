@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 
 const VIEWS = ['repo', 'directory', 'file', 'author'];
 const VIEW_LABELS = { repo: 'Repository', directory: 'Directory', file: 'File', author: 'Author' };
@@ -9,6 +9,24 @@ const inputCls =
 export default function FilterBar({ filters, onChange, authors = [], commits = [] }) {
   const [commitMode, setCommitMode] = useState('time'); // 'time' | 'manual'
   const [commitSearch, setCommitSearch] = useState('');
+  const pathInputRef = useRef(null);
+
+  // Press '/' anywhere to focus the path input (when not already typing)
+  useEffect(() => {
+    const handler = (e) => {
+      if (
+        e.key === '/' &&
+        document.activeElement.tagName !== 'INPUT' &&
+        document.activeElement.tagName !== 'TEXTAREA' &&
+        document.activeElement.tagName !== 'SELECT'
+      ) {
+        e.preventDefault();
+        pathInputRef.current?.focus();
+      }
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, []);
 
   const set = (patch) => onChange((f) => ({ ...f, ...patch }));
 
@@ -78,6 +96,7 @@ export default function FilterBar({ filters, onChange, authors = [], commits = [
         <div className="flex items-center bg-zinc-700 border border-zinc-600 rounded-md px-2 py-1.5 gap-1 min-w-[160px] max-w-[280px] focus-within:ring-2 focus-within:ring-indigo-500">
           <span className="text-zinc-500 text-xs flex-shrink-0">/</span>
           <input
+            ref={pathInputRef}
             type="text"
             value={filters.path || ''}
             onChange={(e) => set({ path: e.target.value })}

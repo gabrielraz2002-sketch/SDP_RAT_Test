@@ -45,7 +45,8 @@ function SummaryCard({ label, value, sub, color, loading }) {
 export default function RepoDashboard() {
   const { id } = useParams();
   const [filters, setFilters] = useState(DEFAULT_FILTERS);
-  const [tab, setTab] = useState('table'); // 'table' | 'charts'
+  const [tab, setTab] = useState('table');
+  const [errorDismissed, setErrorDismissed] = useState(false);
 
   const [repo, setRepo] = useState(null);
   const [authors, setAuthors] = useState([]);
@@ -55,6 +56,9 @@ export default function RepoDashboard() {
   const [pathTypes, setPathTypes] = useState(new Map());
 
   const { data: metricsData, loading, error } = useMetrics(id, filters);
+
+  // Reset error banner when a new error arrives
+  useEffect(() => { setErrorDismissed(false); }, [error]);
 
   // ── Data fetch on repo change ─────────────────────────────────────────────
   useEffect(() => {
@@ -169,10 +173,16 @@ export default function RepoDashboard() {
       </div>
 
       {/* Error banner */}
-      {error && (
+      {error && !errorDismissed && (
         <div className="flex items-center gap-2 bg-red-900/30 border-b border-red-700/40 px-4 py-2 text-sm text-red-400 flex-shrink-0">
           <span>⚠</span>
           <span className="flex-1">{error}</span>
+          <button
+            onClick={() => setErrorDismissed(true)}
+            className="text-red-400 hover:text-red-200 transition-colors text-xs px-1"
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -268,6 +278,7 @@ export default function RepoDashboard() {
                 data={metricsData}
                 loading={loading}
                 onPathClick={handlePathClick}
+                onClearFilters={() => setFilters(DEFAULT_FILTERS)}
               />
             ) : (
               <MetricsCharts data={metricsData} />

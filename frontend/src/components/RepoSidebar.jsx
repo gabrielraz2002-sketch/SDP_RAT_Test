@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { getRepos } from '../utils/api.js';
+import { getRepos, deleteRepo } from '../utils/api.js';
 import AddRepoModal from './AddRepoModal.jsx';
 
 function StatusDot({ status }) {
@@ -48,6 +48,19 @@ export default function RepoSidebar() {
     [fetchRepos, navigate]
   );
 
+  const handleDelete = useCallback(
+    async (e, repoId) => {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        await deleteRepo(repoId);
+        fetchRepos();
+        if (repoId === activeId) navigate('/');
+      } catch (_) {}
+    },
+    [fetchRepos, activeId, navigate]
+  );
+
   return (
     <aside className="w-60 flex-shrink-0 bg-zinc-800 border-r border-zinc-700 flex flex-col h-full">
       {/* Header */}
@@ -66,37 +79,62 @@ export default function RepoSidebar() {
             No repositories loaded
           </p>
         )}
-        {repos.map((repo) => (
-          <Link
-            key={repo.id}
-            to={`/repo/${repo.id}`}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-150 ${
-              repo.id === activeId
-                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40'
-                : 'text-zinc-300 hover:bg-zinc-700/70 hover:text-white'
-            }`}
-          >
-            <StatusDot status={repo.status} />
-            <span className="truncate flex-1">{repo.name}</span>
-            {repo.status === 'ready' && repo.progress?.total > 0 && (
-              <span
-                className={`text-xs tabular-nums rounded px-1.5 py-0.5 ${
-                  repo.id === activeId
-                    ? 'bg-indigo-500 text-indigo-100'
-                    : 'bg-zinc-700 text-zinc-400'
-                }`}
-              >
-                {repo.progress.total}
-              </span>
-            )}
-            {(repo.status === 'processing' || repo.status === 'queued') &&
-              repo.progress?.total > 0 && (
-                <span className="text-xs text-zinc-400 tabular-nums">
-                  {repo.progress.loaded}/{repo.progress.total}
-                </span>
+        {repos.map((repo) => {
+          const isProcessing = repo.status === 'processing' || repo.status === 'queued';
+          const pct =
+            isProcessing && repo.progress?.total > 0
+              ? Math.min(100, (repo.progress.loaded / repo.progress.total) * 100)
+              : 0;
+          return (
+            <div key={repo.id} className="group/item">
+              <div className="relative flex items-center">
+                <Link
+                  to={`/repo/${repo.id}`}
+                  className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-150 flex-1 min-w-0 pr-8 ${
+                    repo.id === activeId
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40'
+                      : 'text-zinc-300 hover:bg-zinc-700/70 hover:text-white'
+                  }`}
+                >
+                  <StatusDot status={repo.status} />
+                  <span className="truncate flex-1">{repo.name}</span>
+                  {repo.status === 'ready' && repo.progress?.total > 0 && (
+                    <span
+                      className={`text-xs tabular-nums rounded px-1.5 py-0.5 group-hover/item:hidden ${
+                        repo.id === activeId
+                          ? 'bg-indigo-500 text-indigo-100'
+                          : 'bg-zinc-700 text-zinc-400'
+                      }`}
+                    >
+                      {repo.progress.total}
+                    </span>
+                  )}
+                </Link>
+                {/* Delete button — appears on hover */}
+                <button
+                  onClick={(e) => handleDelete(e, repo.id)}
+                  title="Remove repository"
+                  className={`absolute right-1 w-6 h-6 rounded flex items-center justify-center text-xs opacity-0 group-hover/item:opacity-100 transition-opacity ${
+                    repo.id === activeId
+                      ? 'text-indigo-200 hover:bg-indigo-500'
+                      : 'text-zinc-500 hover:bg-zinc-600 hover:text-red-400'
+                  }`}
+                >
+                  ✕
+                </button>
+              </div>
+              {/* Progress bar for processing repos */}
+              {isProcessing && repo.progress?.total > 0 && (
+                <div className="mx-3 mb-1 h-0.5 bg-zinc-700 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-400 rounded-full transition-all duration-500"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
               )}
-          </Link>
-        ))}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Add button */}

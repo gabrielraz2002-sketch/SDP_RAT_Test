@@ -29,10 +29,18 @@ function SkeletonRows() {
   ));
 }
 
-export default function MetricsTable({ data, loading, onPathClick }) {
+export default function MetricsTable({ data, loading, onPathClick, onClearFilters }) {
   const [sortKey, setSortKey] = useState('churn');
   const [sortDir, setSortDir] = useState('desc');
   const [page, setPage] = useState(1);
+  const [copiedPath, setCopiedPath] = useState(null);
+
+  const copyPath = (path) => {
+    navigator.clipboard?.writeText(path).then(() => {
+      setCopiedPath(path);
+      setTimeout(() => setCopiedPath(null), 1500);
+    });
+  };
 
   const rows = data?.breakdown ?? [];
 
@@ -127,11 +135,16 @@ export default function MetricsTable({ data, loading, onPathClick }) {
             {loading && rows.length === 0 && <SkeletonRows />}
             {!loading && rows.length === 0 && (
               <tr>
-                <td
-                  colSpan={COLUMNS.length}
-                  className="px-3 py-10 text-center text-zinc-500 text-sm"
-                >
-                  No data for the selected filters
+                <td colSpan={COLUMNS.length} className="px-3 py-10 text-center">
+                  <p className="text-zinc-500 text-sm mb-3">No data for the selected filters</p>
+                  {onClearFilters && (
+                    <button
+                      onClick={onClearFilters}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 border border-indigo-700/50 rounded-md px-3 py-1.5 transition-colors"
+                    >
+                      Clear Filters
+                    </button>
+                  )}
                 </td>
               </tr>
             )}
@@ -143,13 +156,24 @@ export default function MetricsTable({ data, loading, onPathClick }) {
                 }`}
               >
                 <td className="px-3 py-1.5 max-w-[200px]">
-                  <button
-                    onClick={() => onPathClick && onPathClick(row.path, row.type)}
-                    title={row.path}
-                    className="text-indigo-300 hover:text-indigo-100 text-left truncate block w-full"
-                  >
-                    {row.path.length > 48 ? '…' + row.path.slice(-45) : row.path}
-                  </button>
+                  <div className="flex items-center gap-1 group/path min-w-0">
+                    <button
+                      onClick={() => onPathClick && onPathClick(row.path, row.type)}
+                      title={row.path}
+                      className="text-indigo-300 hover:text-indigo-100 text-left truncate block min-w-0"
+                    >
+                      {row.path.length > 48 ? '…' + row.path.slice(-45) : row.path}
+                    </button>
+                    <button
+                      onClick={() => copyPath(row.path)}
+                      title="Copy path"
+                      className={`flex-shrink-0 text-xs w-4 opacity-0 group-hover/path:opacity-100 transition-opacity ${
+                        copiedPath === row.path ? 'text-green-400' : 'text-zinc-500 hover:text-zinc-200'
+                      }`}
+                    >
+                      {copiedPath === row.path ? '✓' : '⧉'}
+                    </button>
+                  </div>
                 </td>
                 <td className="px-3 py-1.5 text-right text-green-400 tabular-nums">
                   {row.addedLines.toLocaleString()}
