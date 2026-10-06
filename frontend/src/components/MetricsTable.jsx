@@ -103,19 +103,19 @@ export default function MetricsTable({ data, loading, onPathClick }) {
       {/* Table */}
       <div className="overflow-x-auto flex-1">
         <table className="w-full text-xs text-zinc-300 border-collapse">
-          <thead className="bg-zinc-800 sticky top-0 z-10">
+          <thead className="bg-zinc-900 sticky top-0 z-10">
             <tr>
               {COLUMNS.map((c) => (
                 <th
                   key={c.key}
                   onClick={() => toggleSort(c.key)}
-                  className={`px-3 py-2 font-medium text-zinc-400 cursor-pointer hover:text-zinc-100 select-none whitespace-nowrap border-b border-zinc-700 ${
+                  className={`px-3 py-2.5 font-semibold text-zinc-500 uppercase tracking-wider text-xs cursor-pointer hover:text-zinc-200 select-none whitespace-nowrap border-b border-zinc-700 transition-colors ${
                     c.align === 'right' ? 'text-right' : 'text-left'
-                  }`}
+                  }${sortKey === c.key ? ' text-indigo-400 hover:text-indigo-300' : ''}`}
                 >
                   {c.label}
                   {sortKey === c.key && (
-                    <span className="ml-1 text-indigo-400">
+                    <span className="ml-1">
                       {sortDir === 'asc' ? '▲' : '▼'}
                     </span>
                   )}
@@ -138,7 +138,9 @@ export default function MetricsTable({ data, loading, onPathClick }) {
             {pageRows.map((row, i) => (
               <tr
                 key={`${row.path}:${i}`}
-                className="border-b border-zinc-700/30 hover:bg-zinc-800/60 transition-colors"
+                className={`border-b border-zinc-800 transition-colors hover:bg-indigo-950/25 ${
+                  i % 2 === 1 ? 'bg-zinc-800/20' : ''
+                }`}
               >
                 <td className="px-3 py-1.5 max-w-[200px]">
                   <button

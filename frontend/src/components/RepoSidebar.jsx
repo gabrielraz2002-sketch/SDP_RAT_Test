@@ -51,8 +51,11 @@ export default function RepoSidebar() {
   return (
     <aside className="w-60 flex-shrink-0 bg-zinc-800 border-r border-zinc-700 flex flex-col h-full">
       {/* Header */}
-      <div className="px-4 py-4 border-b border-zinc-700">
-        <h1 className="text-xl font-bold text-indigo-400 tracking-wide">RAT</h1>
+      <div className="px-4 py-5 border-b border-zinc-700 bg-gradient-to-br from-indigo-950/80 via-zinc-800 to-zinc-800">
+        <div className="flex items-baseline gap-1.5">
+          <h1 className="text-2xl font-black text-white tracking-tight">RAT</h1>
+          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 mb-0.5 flex-shrink-0"></span>
+        </div>
         <p className="text-xs text-zinc-400 mt-0.5">Repo Analysis Tool</p>
       </div>
 
@@ -67,10 +70,10 @@ export default function RepoSidebar() {
           <Link
             key={repo.id}
             to={`/repo/${repo.id}`}
-            className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors ${
+            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-all duration-150 ${
               repo.id === activeId
-                ? 'bg-indigo-600 text-white'
-                : 'text-zinc-300 hover:bg-zinc-700'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40'
+                : 'text-zinc-300 hover:bg-zinc-700/70 hover:text-white'
             }`}
           >
             <StatusDot status={repo.status} />

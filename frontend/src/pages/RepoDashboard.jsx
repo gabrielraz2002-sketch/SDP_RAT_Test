@@ -17,18 +17,25 @@ const DEFAULT_FILTERS = {
   view: 'repo',
 };
 
+const CARD_ACCENTS = {
+  Commits: 'border-t-2 border-t-blue-500',
+  'Total Churn': 'border-t-2 border-t-amber-500',
+  Growth: 'border-t-2 border-t-emerald-500',
+  'Top Author': 'border-t-2 border-t-violet-500',
+};
+
 function SummaryCard({ label, value, sub, color, loading }) {
   return (
-    <div className="bg-zinc-800 border border-zinc-700 rounded-xl px-3 py-2.5">
-      <p className="text-xs text-zinc-400 mb-1">{label}</p>
+    <div className={`bg-zinc-800 border border-zinc-700 rounded-xl px-4 py-3 ${CARD_ACCENTS[label] || ''}`}>
+      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-2">{label}</p>
       {loading ? (
-        <div className="h-5 bg-zinc-700 rounded animate-pulse w-20" />
+        <div className="h-7 bg-zinc-700 rounded animate-pulse w-24" />
       ) : (
         <>
-          <p className={`text-lg font-semibold leading-tight truncate ${color || 'text-zinc-100'}`}>
+          <p className={`text-2xl font-bold leading-none truncate ${color || 'text-zinc-100'}`}>
             {value}
           </p>
-          {sub && <p className="text-xs text-zinc-500 mt-0.5 truncate">{sub}</p>}
+          {sub && <p className="text-xs text-zinc-500 mt-1.5 truncate">{sub}</p>}
         </>
       )}
     </div>
@@ -150,6 +157,17 @@ export default function RepoDashboard() {
         commits={commits}
       />
 
+      {/* Repo name header */}
+      <div className="flex items-center gap-3 px-4 py-2 border-b border-zinc-700/60 bg-zinc-800/50 flex-shrink-0">
+        <span className="font-semibold text-zinc-100 text-sm">{repo.name}</span>
+        {repo.ref && (
+          <span className="text-xs text-zinc-600 font-mono hidden sm:inline">{repo.ref.slice(0, 12)}</span>
+        )}
+        <span className="ml-auto text-xs bg-green-900/40 text-green-400 border border-green-700/40 rounded-full px-2 py-0.5 flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400 inline-block"></span> ready
+        </span>
+      </div>
+
       {/* Error banner */}
       {error && (
         <div className="flex items-center gap-2 bg-red-900/30 border-b border-red-700/40 px-4 py-2 text-sm text-red-400 flex-shrink-0">
@@ -159,7 +177,7 @@ export default function RepoDashboard() {
       )}
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 px-4 py-3 border-b border-zinc-700 flex-shrink-0">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 px-4 py-4 border-b border-zinc-700 flex-shrink-0 bg-zinc-900/50">
         <SummaryCard
           label="Commits"
           value={metricsData?.commitCount?.toLocaleString() ?? '—'}
