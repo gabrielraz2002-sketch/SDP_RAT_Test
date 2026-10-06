@@ -60,7 +60,7 @@ With the backend running and a repo loaded at its reference SHA:
 cd backend
 node src/utils/validate.js cJSON   # ✓ 983 rows matched  — PASSED
 node src/utils/validate.js redis   # ✓ 18301 rows matched — PASSED
-node src/utils/validate.js git     # run after loading the git repo at its reference SHA
+node src/utils/validate.js git     # ✓ 62601 rows matched — PASSED
 ```
 
 ## Metric definitions
